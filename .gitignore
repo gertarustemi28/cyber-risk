@@ -1,107 +1,61 @@
-# ============================================================
-# .gitignore — Data-Driven Cyber Risk Analytics Dissertation
-# Python / Jupyter / ML project (CICIDS2017, sklearn, XGBoost, TensorFlow)
-# ============================================================
-
-# ---- Datasets (large, should not live in git) ----
-CICIDS2017_Banking_FINAL.csv
+# Data files
 *.csv
-!sample*.csv
-!*_sample.csv
-data/
-data/raw/
-data/processed/
-*.pcap
-*.parquet
-
-# ---- Preprocessed Phase 1 outputs (numpy arrays, fitted objects) ----
+*.tsv
 *.npy
 *.npz
-preprocessed/
-label_encoder.pkl
-scaler.pkl
-pca.pkl
-selected_features.pkl
-feature_names.csv
-
-# ---- Trained models / checkpoints (Phase 2 outputs) ----
-models/
 *.pkl
-*.joblib
+*.pickle
 *.h5
 *.hdf5
-*.keras
-xgboost_model.json
-lstm_best.keras
-lstm_model.keras
-random_forest.pkl
-isolation_forest.pkl
+/data/
+/preprocessed/
 
-# ---- Generated figures / results (regenerable from notebooks) ----
-figures/
-*.png
-*.jpg
-*.jpeg
-!docs/*.png
-!assets/*.png
-model_comparison.csv
-risk_tier_classifications.csv
-sample_risk_report.csv
-
-# ---- Jupyter ----
+# Jupyter
 .ipynb_checkpoints/
 */.ipynb_checkpoints/*
 
-# ---- Google Colab ----
-.config/
-
-# ---- Python ----
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
+.eggs/
+build/
+dist/
 
-# ---- Virtual environments ----
-venv/
+# Virtual environments
 .venv/
+venv/
 env/
 ENV/
-env.bak/
-venv.bak/
 
-# ---- Environment / secrets ----
+# Environment / secrets
 .env
-.env.*
+*.env.local
 
-# ---- TensorFlow / Keras extras ----
+# Model artifacts
+*.model
+*.joblib
+*.pt
+*.pth
+*.keras
+saved_models/
+checkpoints/
+
+# Logs
+*.log
 logs/
-tensorboard_logs/
-*.tfevents.*
 
-# ---- OS ----
+# OS files
 .DS_Store
 Thumbs.db
 
-# ---- IDE ----
+# Editor / IDE
 .vscode/
 .idea/
 *.swp
 
-# ---- Jupyter kernel metadata (optional, keep notebooks clean) ----
+# Google Colab / Drive mount artifacts
+drive/
+sample_data/ clean) ----
 .jupyter/
