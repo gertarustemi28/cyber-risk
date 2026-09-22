@@ -1,139 +1,125 @@
-# A Data-Driven Cyber Risk Analytics and Decision-Support Framework for Digital Banking Environments
-
-MSc Computer Science dissertation project — Gerta Rustemi, UNYT
-
-A machine learning pipeline for network intrusion detection that supports regulatory-aligned cyber risk decision-making in digital banking, built in response to the operational resilience requirements of the EU's **Digital Operational Resilience Act (DORA)** and the risk management principles of **ISO 31000**.
-
-Four models — **Random Forest**, **XGBoost**, **LSTM**, and **Isolation Forest** — are trained and evaluated on the **CICIDS2017** network intrusion dataset, explained using **SHAP**, and mapped to a four-tier (**Critical / High / Medium / Low**) risk decision framework.
-
----
+# Data-Driven Cyber Risk Analytics and Decision Support Framework for Digital Banking Environments
 
 ## Overview
 
-Digital banks face an expanding range of advanced cyber threats at the same time regulators are demanding a more scientific, auditable approach to operational risk. This project investigates whether supervised and unsupervised machine learning models can detect network intrusions with enough accuracy and explainability to support a regulation-aligned risk tiering system — one that could plausibly sit inside a bank's incident response and governance workflow.
+Digital banks are under growing pressure from both cyber threats and regulation. The EU's Digital Operational Resilience Act (DORA) and ISO 31000 require financial institutions to run ICT risk management that is systematic, evidence-based, and auditable — yet most machine learning intrusion detection work stops at reporting accuracy, without explaining *why* a model flagged a flow or *what a bank should actually do about it*.
 
-**Research pipeline:**
-1. Exploratory data analysis and preprocessing of raw network flow data
-2. Training and evaluation of four ML architectures for intrusion detection
-3. SHAP-based explainability analysis for the top-performing tree-based models
-4. Mapping model predictions to a four-tier, regulation-aligned risk decision framework
+This project closes that gap. It builds and evaluates a full pipeline that:
 
----
+1. Detects and classifies network intrusions using four ML architectures spanning supervised, sequential, and unsupervised paradigms.
+2. Explains model predictions with SHAP, satisfying the transparency requirements of DORA Article 13.
+3. Maps model outputs onto a four-tier (Critical / High / Medium / Low) risk decision framework aligned with ISO 31000 and DORA, complete with suggested response actions.
+
+The framework is designed to be usable as an actual ICT risk management capability for a digital banking institution, not just a benchmark exercise.
+
+## Repository Contents
+
+| File | Description |
+|---|---|
+| `Thesis_Phase1_EDA_Preprocessing.ipynb` | Data loading, cleaning, exploratory data analysis, and the full preprocessing pipeline |
+| `Thesis_Phase2_Models.ipynb` | Model training, evaluation, SHAP explainability, and the risk-tiering decision framework |
+| `CICIDS2017_Banking_FINAL.csv` | Working dataset (see [Dataset](#dataset) below) |
 
 ## Dataset
 
-**CICIDS2017** (Canadian Institute for Cybersecurity, 2017) — labelled network flow data covering benign traffic and multiple attack categories.
+Built from the [CICIDS2017](https://www.unb.ca/cic/datasets/ids-2017.html) network intrusion detection benchmark (Canadian Institute for Cybersecurity), subsetting five days of the original capture chosen for relevance to digital banking threat scenarios:
 
-| Stage | Rows | Notes |
-|---|---|---|
-| Raw dataset | 1,048,575 | 79 columns |
-| After cleaning | 975,899 | nulls, infinite values, and 72,246 duplicate rows removed |
-| Train / test split | 780,719 / 195,180 | stratified 80/20 split |
-| Training set after SMOTE | 5,836,260 | balanced across all 10 classes |
+| Source capture | Records |
+|---|---|
+| Tuesday (brute force) | 445,909 |
+| Wednesday (DoS variants) | 692,703 |
+| Thursday (web attacks) | 170,366 |
+| Thursday (infiltration) | 288,602 |
+| Friday (DDoS) | 225,745 |
 
-**Classes (10):** BENIGN, DDoS, DoS Hulk, DoS Slowloris, DoS Slowhttptest, FTP-Patator, SSH-Patator, Web Attack – Brute Force, Web Attack – XSS, Web Attack – SQL Injection
+Combined into `CICIDS2017_Banking_FINAL.csv`: **1,048,575 raw records × 79 columns** (78 network flow features + label).
 
-**Class imbalance:** ~74.8% benign / ~25.2% attack traffic overall, with severe under-representation of web attack classes (as few as 21 SQL Injection samples) — the primary motivation for SMOTE oversampling.
+After removing nulls, infinite values (a known `Flow Bytes/s` / `Flow Packets/s` CICFlowMeter artefact), and duplicates, the cleaned working set used throughout has **975,899 records** across **10 classes**:
 
-> The raw CSV is not included in this repository due to its size. Download the original CICIDS2017 dataset from the [Canadian Institute for Cybersecurity](https://www.unb.ca/cic/datasets/ids-2017.html) and place it locally before running Phase 1.
+- `BENIGN` (74.8%)
+- `DDoS`, `DoS Hulk`, `DoS Slowhttptest`, `DoS Slowloris`
+- `FTP-Patator`, `SSH-Patator`
+- `Web Attack – Brute Force`, `Web Attack – SQL Injection` (21 records — the most severe imbalance in the dataset), `Web Attack – XSS`
 
----
+> The dataset file is provided for reproducibility. It is a large file (~1M rows); see [Environment](#environment--how-to-run) below for handling it.
 
 ## Methodology
 
-### Preprocessing (Phase 1)
-- Label-encoding fixes for corrupted Web Attack category names (UTF-8/Latin-1 mismatch in source CSVs)
-- Removal of null values, infinite values (`Flow Bytes/s`, `Flow Packets/s`), and duplicate rows
-- `StandardScaler` feature normalisation
-- Stratified 80/20 train/test split (SMOTE applied to training data only, to avoid leakage)
-- **SMOTE** oversampling to balance all 10 classes
-- **PCA** dimensionality reduction (79 → 16 components, retaining 95% of variance)
-- **RFE** (Recursive Feature Elimination) to identify the top 20 most informative features
+A benchmark network intrusion detection dataset is used to train and evaluate four machine learning architectures under a common preprocessing pipeline, model performance is compared using standard multi-class classification metrics, the best-performing supervised models are subjected to post-hoc SHAP explainability analysis, and model outputs are then mapped onto a risk-tiering decision framework.
 
-### Models (Phase 2)
-| Model | Type | Input features |
+### Phase 1 — Preprocessing (`Thesis_Phase1_EDA_Preprocessing.ipynb`)
+- Label encoding fixes (UTF-8/Latin-1 artefacts in "Web Attack" labels)
+- Data quality audit and cleaning (nulls, infinities, duplicates)
+- Class distribution / imbalance analysis
+- Feature-level EDA and Pearson correlation heatmap
+- Stratified train/test split
+- `StandardScaler` normalisation (fit on training data only — no leakage)
+- **SMOTE** oversampling of the training set to address the ~75/25 benign/attack imbalance
+- **PCA** dimensionality reduction (for training efficiency and 2D risk-cluster visualisation)
+- **RFE** (Recursive Feature Elimination, Random Forest-based) for interpretable feature selection
+- Saves all preprocessed arrays and fitted objects (scaler, PCA, label encoder) for Phase 2
+
+### Phase 2 — Models, Explainability & Risk Framework (`Thesis_Phase2_Models.ipynb`)
+Four models trained on the SMOTE-balanced data, each representing a different detection paradigm:
+
+| Model | Paradigm | Notes |
 |---|---|---|
-| Random Forest | Supervised, bagging ensemble | 78 features (SMOTE-balanced) |
-| XGBoost | Supervised, gradient boosting | 78 features (SMOTE-balanced) |
-| LSTM | Supervised, recurrent neural network | 16 PCA components |
-| Isolation Forest | Unsupervised, anomaly detection | 78 features (trained on benign traffic only) |
+| Random Forest | Supervised, bagging ensemble | Trained on full 78 features |
+| XGBoost | Supervised, gradient boosting | Trained on full 78 features; validation split carved out for early stopping |
+| LSTM | Supervised, sequential (RNN) | Trained on 16 PCA components reshaped as a 16-timestep sequence |
+| Isolation Forest | Unsupervised, anomaly detection | Binary normal/anomaly output; targets zero-day/novel attacks |
 
-### Explainability
-SHAP `TreeExplainer` was applied to the Random Forest and XGBoost models to identify the network flow attributes most responsible for predictions (e.g. Destination Port, `Init_Win_bytes_backward`, packet timing features), supporting the auditability requirements of DORA Article 13 and ISO 31000.
+Also included:
+- **SHAP** explainability analysis for Random Forest and XGBoost
+- Comparative evaluation (precision, recall, F1, AUC-ROC, precision-recall curves, false positive rate — accuracy alone is intentionally avoided given the class imbalance)
+- **Risk Tier Decision Framework**: maps model outputs to Critical / High / Medium / Low risk tiers with response recommendations, aligned to ISO 31000 and DORA Article 13
 
-### Risk Tiering Framework
-Model predictions are mapped to a four-tier risk score (0–100) using a CVSS-style severity weighting per attack category, translating raw classifier output into governance-facing decisions:
+## Results Summary
 
-| Tier | Score range | Example response |
+| Model | Macro F1 | AUC-ROC |
 |---|---|---|
-| Critical | 85–100 | Immediate escalation, isolate systems, notify CISO/regulators (DORA Art. 19) |
-| High | 65–84 | SOC alert within 15 minutes, block source IP, forensic logging |
-| Medium | 40–64 | Log and monitor, escalate if pattern persists |
-| Low | 0–39 | Record in risk register, review in daily report |
+| **XGBoost** | **0.906** | **0.9999** |
+| Random Forest | 0.881 | — |
+| LSTM | 0.742 | — |
+| Isolation Forest | 0.700 | — |
 
----
+- XGBoost was the top performer overall; tree-based ensembles clearly outperformed the sequential (LSTM) and unsupervised (Isolation Forest) models on this structured, tabular network flow data.
+- Isolation Forest's default false-positive rate (26.9%) was shown to stem from unoptimised hyperparameters, not a hard ceiling — a contamination-parameter sensitivity sweep reduced false positives by nearly two-thirds (at a recall cost).
+- SHAP identified `Destination Port`, `Init_Win_bytes_backward`, and packet-timing features as the most influential predictors for both Random Forest and XGBoost.
+- The rarest class, `Web Attack – SQL Injection` (21 records), remained the most volatile across all models even after SMOTE — consistent with known limits of SMOTE's effectiveness under severe high-dimensional imbalance.
 
-## Results
+## Environment & How to Run
 
-| Model | Macro F1 | AUC-ROC | Mean FPR |
-|---|---|---|---|
-| **XGBoost** | **0.906** | **0.9999** | — |
-| Random Forest | 0.881 | — | — |
-| LSTM | 0.742 | — | — |
-| Isolation Forest | 0.700 | — | 0.269 (default), reduced ~⅔ with tuned contamination |
+Both notebooks were built and run in **Google Colab** with a **T4 GPU runtime**.
 
-XGBoost and Random Forest (tree-based ensembles) substantially outperformed LSTM and Isolation Forest on structured network flow data, particularly on rare, semantically overlapping web attack classes. A sensitivity sweep on Isolation Forest's contamination parameter showed its default 26.9% false positive rate was a hyperparameter artefact, not a ceiling — tuning reduced false positives by nearly two-thirds at the cost of recall.
+1. Upload `CICIDS2017_Banking_FINAL.csv` to Google Drive (e.g. `My Drive/Thesis/CICIDS2017_Banking_FINAL.csv`).
+2. Run `Thesis_Phase1_EDA_Preprocessing.ipynb` top to bottom. This mounts Drive, cleans the data, and saves preprocessed arrays and fitted objects (`scaler.pkl`, `pca.pkl`, `label_encoder.pkl`, `X_train_sm.npy`, etc.) to `My Drive/Thesis/preprocessed/`.
+3. Run `Thesis_Phase2_Models.ipynb` top to bottom. It loads Phase 1's outputs, trains all four models, runs SHAP, and produces the comparative evaluation and risk-tier reports.
 
-Full per-model metrics, confusion matrices, and SHAP plots are generated in the Phase 2 notebook.
+**Approximate runtimes on a T4:**
+- SMOTE (Phase 1): 5–15 minutes
+- Random Forest: 15–30 minutes
+- XGBoost: 20–40 minutes
+- LSTM: 20–40 minutes (GPU required)
+- Isolation Forest: 5–10 minutes
 
----
+**Key libraries:** `scikit-learn`, `imbalanced-learn` (SMOTE), `xgboost`, `tensorflow`/`keras` (LSTM), `shap`, `pandas`, `numpy`, `matplotlib`/`seaborn`.
 
-## Repository Structure
+## Scope & Limitations
 
-```
-.
-├── notebooks/
-│   ├── Thesis_Phase1_EDA_Preprocessing.ipynb   # Data cleaning, SMOTE, PCA, RFE
-│   └── Thesis_Phase2_Model_Training.ipynb      # Model training, evaluation, SHAP, risk framework
-├── figures/                                     # Generated plots (gitignored — regenerate by running notebooks)
-├── models/                                      # Trained model artefacts (gitignored — regenerate by running notebooks)
-├── .gitignore
-├── LICENSE
-└── README.md
-```
+- Evaluated exclusively on the CICIDS2017 benchmark; no production banking network data was used.
+- Risk-tier scoring weights follow CVSS-style severity logic and general banking operational risk taxonomy, not a specific institution's formal risk appetite — the framework is a template, not an as-deployed system.
+- CICIDS2017's dataset age and severe imbalance in rare web-attack classes are acknowledged limitations; future work should validate against live banking network telemetry.
 
----
+## Regulatory & Standards Alignment
 
-## How to Reproduce
+- **DORA (EU) Article 13** — automated ICT risk detection tools must be explainable and auditable
+- **ISO 31000:2018** — risk evaluation against defined criteria
+- **ISO/IEC 27001:2022**, **NIST Cybersecurity Framework**, **Basel III**, **IIA Three Lines Model** — referenced as supplementary governance context
 
-Both notebooks were built for **Google Colab** and expect Google Drive paths (`/content/drive/MyDrive/Thesis/...`). To run locally, replace the Drive mount cells with local file paths.
+## Confidentiality
 
-1. Download the CICIDS2017 dataset and place it at the path referenced in Phase 1, Cell 2
-2. Run `Thesis_Phase1_EDA_Preprocessing.ipynb` end-to-end — this saves preprocessed arrays and fitted objects (scaler, PCA, label encoder, etc.)
-3. Run `Thesis_Phase2_Model_Training.ipynb` — this loads Phase 1 outputs, trains all four models, runs SHAP analysis, and applies the risk tiering framework
-
-**Key dependencies:** `scikit-learn`, `xgboost`, `tensorflow`, `imbalanced-learn`, `shap`, `pandas`, `numpy`, `matplotlib`, `seaborn`
-
-```bash
-pip install scikit-learn xgboost tensorflow imbalanced-learn shap pandas numpy matplotlib seaborn joblib
-```
-
-> Random Forest and XGBoost train in ~15–40 minutes each on the full SMOTE-balanced set (~5.8M rows); LSTM requires a GPU runtime.
-
----
-
-## Limitations
-
-- **Dataset age:** CICIDS2017 reflects attack patterns from 2017 and may not capture more recent threat techniques
-- **Class imbalance:** despite SMOTE, rare web attack categories (as few as 21 raw SQL Injection samples) remain challenging to detect reliably
-- **Simulated risk weights:** the risk-scoring weights in the tiering framework are illustrative, based on CVSS-style severity reasoning, not calibrated against live incident data
-- **Future work:** validation against live banking network telemetry is recommended before any operational deployment
-
----
-
-## Keywords
-
-cyber risk analytics · network intrusion detection · machine learning · XGBoost · Random Forest · LSTM · Isolation Forest · SHAP explainability · DORA · ISO 31000 · digital banking · decision-support framework
+All references to "a digital banking institution" throughout this work are anonymised and generalised — no confidential, proprietary, or institution-specific information is disclosed.
 
 ## License
 
